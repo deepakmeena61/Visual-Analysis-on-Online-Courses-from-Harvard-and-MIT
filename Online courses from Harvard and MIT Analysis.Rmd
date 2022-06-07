@@ -1,0 +1,249 @@
+---
+title: "Hackathon-IE6600-Sec03-Group9"
+author: "Deepak Kumar Meena | Shubhi Gautam | Anushka Suvarna"
+date: "2/20/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE, error=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r,  include=FALSE}
+library(tidyverse)
+library(treemap)
+library(ggplot2)
+library(plotly)
+library(zoo)
+library(lubridate)
+library(ggrepel)
+library(tidytext)
+library(readr)
+library(DescTools)
+library(wordcloud)
+library(formattable)
+library(gridExtra)
+library(ggalluvial)
+library(highcharter)
+```
+
+## Introduction and Problem statement
+Harvard and MIT founded edX , a major online education provider in the United States. It offers university level courses in a variety of fields to a global student base, with some courses available for free. Over the course of this time with over 3000 courses and over 1.4 million certifications granted to students, Harvard and MIT have played an instrumental role in the development of a thriving market for college-level content.
+From the kaggle dataset provided to us for this Hackathon challenge we decided to infer a few details about this huge domain and come up with visualizations that will better showcase the content of the dataset. We also did work with quite a few new libraries like zoo which intends to perform calculations containing time series of numeric vectors, matrices and factors and Highcharter in R which is a very flexible and customizable charting library.
+
+The visualizations presented in the below report consists of a blend of charts and plots while using various columns like gender, course subject, launch date of the course , audited courses from the dataset.
+The first section deals with the course subjects offered by Harvard and MIT and the count of %Audited according to institution and Course Subjects. It also includes the count of %Audited according to Institution and Course subjects. The second section deals with interpreting Course Subjects on various factors. We have used box plots, heat maps,and highcharts for showing this trend. The third section deals with the count of participants(Course content accessed), we have visualized the former according to course, year and students who accessed 50% course. Other than this, we have also visualized the density of gender ratio in a particular course.
+
+```{r, warning=FALSE}
+original_data <-  read.csv('appendix.csv',na.strings = "")
+
+colnames(original_data) <- c("Institution","Course Number","Launch Date","Course Title","Instructors",
+                   "Course Subject","Year","Honor Code Certificates",
+                   "Participants(Course Content Accessed)","Audited(>50% Course Content Accessed)",
+                   "Certified","% Audited","Certified %",
+                   "Certified %(of >50% Course Content Accessed)","% Video Played",
+                   "% Posted in Forum","% Grade Higher Than Zero",
+                   "Total Course Hours (Thousands)","Median Hours for Certification","Median Age",
+                   "% Male","% Female","% Bachelor Degree(or higher)")
+
+original_data$`% Video Played`[10] <- "0"
+original_data$`% Video Played` <- as.numeric(original_data$`% Video Played`)
+
+original_data$Institution <- factor(original_data$Institution)
+original_data$`Course Subject` <- factor(original_data$`Course Subject`)
+original_data$Year <- factor(original_data$Year)
+original_data$`Honor Code Certificates` <- factor(original_data$`Honor Code Certificates`)
+
+```
+```{r, warning=FALSE}
+new_data <- original_data %>%
+            separate(`Launch Date`,into = c("Month","Day","Launch Year"), sep = "/", fill='left')
+```
+
+### Q1: What are the courses offered by Harvard and MIT? Which ones are the most offered courses from each of these universities?
+```{r, warning=FALSE}
+pi1 <- original_data %>% filter(Institution == "MITx") %>%
+group_by(`Course Subject`) %>%
+  summarise(count = n())
+
+hc <- highchart() %>%
+  hc_chart(type = "column", polar = TRUE) %>% 
+  hc_xAxis(categories = pi1$`Course Subject`) %>% 
+  hc_title(text="Count of Courses offered by MIT") %>%
+  hc_series(list(
+     name = "Course Subject Count",
+     data = pi1$count,
+     colorByPoint = TRUE,
+     type = "column",
+     colors = c("#ffdb6a", "#ff916a", "#aae796", "#b298dc", "#2c3e50"),
+     showInLegend = FALSE))
+hc
+
+pi2 <- original_data %>%  filter( Institution == "HarvardX") %>% 
+group_by(`Course Subject`) %>%
+  summarise(count = n())
+
+hc1 <- highchart() %>%
+  hc_chart(type = "column", polar = TRUE) %>% 
+  hc_xAxis(categories = pi2$`Course Subject`) %>% 
+  hc_title(text="Count of Courses offered by Harvard") %>%
+  hc_series(list(
+     name = "Course Subject Count",
+     data = pi2$count,
+     colorByPoint = TRUE,
+     type = "column",
+     colors = c("#ffdb6a", "#ff916a", "#aae796", "#b298dc", "#2c3e50"),
+     showInLegend = FALSE))
+hc1
+```
+
+#### Output
+
+The two highcharts here show the number of courses offered by MIT and Harvard respectively and under which category. We can see that MIT offers almost 50% of courses that fall just under Science, Technology, Engineering and Mathematics and minimal courses under Humanities,History,Design,Religion and Education. On the other hand offers, Harvard offers mostly Humanities,History,Design,Religion and Education course. 
+
+
+### Q2: What is the count of %Audited according to Institutions and Course subjects?
+```{r, warning=FALSE}
+p1 <- ggplot(data = original_data,
+                aes(x = `% Audited`)) + 
+                geom_histogram(color ="black", binwidth = 5, aes(fill = Institution)) +
+                scale_x_continuous(breaks = seq(0,100,5)) +
+                theme(axis.text.x = element_text()) +
+                scale_fill_manual(values = c("#ffdb6a","#ff916a")) +
+                ggtitle("Count of %Audited according to Institution")
+
+
+p2 <- ggplot(data = original_data,
+                aes(x = `% Audited`)) + 
+                geom_histogram(color ="black", binwidth = 5, aes(fill = `Course Subject`)) +
+                scale_x_continuous(breaks = seq(0,100,5)) +
+                theme(axis.text.x = element_text(angle = -45)) +
+                scale_fill_manual(values = c("#ffdb6a","#ff916a","#aae796","#b298dc")) +
+                ggtitle("Count of %Audited according to Course Subject")
+
+grid.arrange(p1,p2,ncol=1)
+```
+
+#### Output
+
+The first stacked bar plot shows the courses offered by MIT have higher courses approved for auditing.Similarly, in the next bar plot we can see the different course subjects and the percentage of each of these that are audited. Science, Technology, Engineering and Mathematics are the most audited courses. This depicts that Students are more inclined towards Science and Technology courses. These Institutions should encourage students to study other courses too. 
+
+
+### Q3: What are the course subjects that are certified , how many of them are posted on the forum? What is the total course hours for the Subjects? What is median hours for certification for courses?
+```{r, warning=FALSE}
+b1 <- ggplot(data = new_data, aes(x = `Course Subject`, y = Certified)) + 
+        geom_boxplot(color="purple", fill="#aae796", alpha=0.2) + 
+        stat_summary(fun.y=mean, geom="point", size=2, color="purple")+
+        coord_flip()
+
+b2 <- ggplot(data = new_data, aes(x = `Course Subject`, y = `Total Course Hours (Thousands)`)) + 
+        geom_boxplot(color="purple", fill="#aae796", alpha=0.2) + 
+        stat_summary(fun.y=mean, geom="point", size=2, color="purple")+
+        coord_flip()
+
+b3 <- ggplot(data = new_data, aes(x = `Course Subject`, y = `Median Hours for Certification`)) + 
+        geom_boxplot(color="purple", fill="#aae796", alpha=0.2) +
+        stat_summary(fun.y=mean, geom="point", size=2, color="purple")+
+        coord_flip()
+
+b4 <- ggplot(data = new_data, aes(x = `Course Subject`, y = `% Posted in Forum`)) + 
+        geom_boxplot(color="purple", fill="#aae796", alpha=0.2) + 
+        stat_summary(fun.y=mean, geom="point", size=2, color="purple")+
+        coord_flip()
+grid.arrange(b1, b4,ncol = 1)
+grid.arrange(b2, b3,ncol = 1)
+```
+
+#### Output
+We have used box plots to answer these questions. The first box plot shows that Computer science courses are the highest certified courses and Science , Technology , Engineering and Mathematics is one of the least. The next box plot answers the percentage of the courses posted on the forum that shows Humanities, History, Design,Religion and education are the highest among the rest. The next plot shows the total course hours of each of the course subjects, and we can observe here that Computer Science is a clear winner. And finally the last box plot summarizes the Median hours of Certification required for all the course subjects and while Science, Technology, Engineering and mathematics and Computer science are quite close in their results, however STEM courses require close to 50 hours more.
+
+
+### Q4: Analyze Course subjects and their trends with respect to course hours across the years.
+```{r, warning=FALSE}
+
+ggplot(data = new_data, aes(x=`Launch Year`,y= `Course Subject`)) + geom_tile(aes(fill= `Total Course Hours (Thousands)`), alpha=1) +
+labs(title="",x="Year", y = "Course Subject", fill = "Course Hours") +
+scale_fill_gradientn(colors = brewer.pal(8,"Spectral"), trans = 'reverse') +
+ggtitle("Hours spent on each course as per year")
+```
+
+#### Output
+Through the heat map used to analyze the trend of each of the course subject we can understand the number of course hours offered by them through 2012 to 2016. We can observe that Subject courses have had a range of close to 200-400 course hours. Another couple of keen observations is that Humanities , History , Design , Religion and Education did not have any course hours released in the year of 2012 also in the same year Government, Health and Social Science had the highest number of course hours released leading up to > 800.
+
+
+### Q5: Based on median ages which course subjects are most popular among the different age groups?
+```{r, warning=FALSE,message=FALSE, error=FALSE}
+a_cht <- new_data %>% group_by(`Course Subject`, `Median Age`, Institution) %>% 
+  summarise(count = n()) %>%
+  hchart('bar', hcaes(x =`Course Subject`, y = `count`, group = `Median Age`))
+a_cht
+```
+
+#### Output
+The Highchart shows that most people of the age 25 median age prefer STEM courses. Similarly, people from the age 27 - 28 prefer Computer science. While Government, Health and Social Science is highly accessed by 30 median age and Humanities, History, Design Religion and Education is popular among 31.
+
+
+### Q6: What is the trend of the course subjects accessed across the years?
+```{r, warning=FALSE,message=FALSE, error=FALSE}
+ggplot(data = new_data,
+               aes( y = new_data$`Participants (Course Content Accessed)`,axis1 = `Course Subject`,axis2 = `Launch Year`)) +
+               scale_x_discrete(limits = c("Courses","Year"), expand = c(0.13, 0.13)) +
+               geom_alluvium(aes(fill = `Institution`), width = 1/12,size=10) +
+               geom_stratum(width = 1/12, fill = "#b298dc", color = "grey") +
+               geom_text(size = 2, stat = "stratum", aes(label = after_stat(stratum))) +
+               theme_minimal() + theme(text = element_text(size = 10)) +
+               scale_fill_brewer(type = "qual", palette = "Accent") +
+               ggtitle("Courses accessed by Participants on yearly basis according to Institution") +
+               theme(plot.title = element_text(size=12,hjust = 0.5))
+```
+
+#### Output
+Here to answer this business question we have used an alluvial chart to show the trend of the course subject accessed across the years. We can see that there is a good blend in the courses accessed from both MIT and Harvard. But we can clearly see that courses from Computer Science and Technology,Engineering and Mathematics are mostly preferred from MIT whereas Government, Health and Social Science and History,Design,Religion and Education are mostly preferred from Harvard.
+
+
+### Q7: Find out the relationship between audited courses and the participants who have accessed the course content.
+```{r, warning=FALSE,message=FALSE, error=FALSE}
+ggplot(data = subset(original_data, original_data$`Participants(Course Content Accessed)` <
+    quantile(original_data$`Participants(Course Content Accessed)`,0.95) &
+    original_data$`Audited(>50% Course Content Accessed)` <
+    quantile(original_data$`Audited(>50% Course Content Accessed)`,0.95)),
+    aes(x = `Participants(Course Content Accessed)`, y = `Audited(>50% Course Content Accessed)`)) +
+    geom_point() +
+    geom_smooth(formula = y ~ x, method = "lm")
+```
+
+#### Output
+The scatter plot here shows the relationship between the two variables namely Participants and Audited courses. Through the results here we can observe a moderately strong positive relationship between the two.
+
+
+### Q8: What are the popular course subjects among the genders.
+```{r, warning=FALSE}
+p1 <- ggplot(data = original_data, aes(x = `% Male`,color = `Course Subject`, fill = `Course Subject` )) +
+   geom_density(alpha = .3)+
+   ggtitle("Density plot of %Male wrt Courses")
+p2 <- ggplot(data = original_data, aes(x = `% Female`,color = `Course Subject`, fill = `Course Subject`)) +
+   geom_density(alpha = .3)+
+   ggtitle("Density plot of %Female wrt Courses")
+grid.arrange(p1, p2,ncol = 1)
+```
+
+#### Output
+We have used density plots to analyze the answer to this question. Here we can see that almost more than 80% of the males prefer Computer Science. For the female population, density graph depicts that approximately 20% of them prefer Computer science. This shows that Female population should be encouraged to study Computer Science.
+
+
+## Conclusion
+
+During this Hackathon we as a team worked on the dataset:Online Courses by MIT and Harvard from Kaggle. The aim was to create clear and concise interpretations from the data to better understand it and all its attributes along with improving our skills in data visualization in R. We have used several libraries in the course of this assignment. We used ggalluvial which uses geom alluvial to create alluvial charts, Highcharts in R to create interactive and dynamic charts, Lubridate in R to make it easy to work with dates.
+
+Some of the key findings from the dataset that we came across is that MIT offers almost 50% of courses that fall just under Science, Technology, Engineering and Mathematics and minimal courses under Humanities, History, Design, Religion and Education. Whereas Harvard on the under hand offers more that 50% of it courses under this. Through the alluvial chart we see that the courses from Computer Science and Technology, Engineering and Mathematics are mostly preferred from MIT whereas Government, Health and Social Science and History, Design, Religion and Education are mostly preferred from Harvard. We also have a heatmap which is another way to visualize hierarchical clustering and, in our case, produces a few useful insights on the course hours of all the course subjects across 2012 to 2016. In conclusion this assignment has better equipped us to utilize the right kind of charts for the right set of data that is being compared or correlated. It has also familiarized us with the vast range of color palettes that can be used in R to beautify our plots/graphs.
+
+From the visualizations we did, it can be interpreted that : 
+
+Female population should be encouraged to study Science and Technology courses.
+
+Harvard should focus on developing Science and Technology courses as students are choosing MIT over Harvard. And, MIT should focus Government, History and Design courses.
+
+There are many students who access course content but do not complete it. Institutions should focus on students getting the course done
